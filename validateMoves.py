@@ -1,9 +1,9 @@
 import chess
 
 fileName = "./Data/moves.txt"
-valid = 0
-invalid = 0
-noFen = 0
+valid    = 0
+invalid  = 0
+noFen    = 0
 
 with open(fileName, "r") as f:
 

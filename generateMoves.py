@@ -1176,7 +1176,7 @@ def outputStatistics(results: dict[str, resultType]) -> None:
             # Only available for direction pieces
             if piece in ["Rook", "Bishop", "Queen", "Knight"]:
                 table = getDisambiguationTable(statsBoard)
-                f.write(str(table) + "\n")
+                f.write(str(table) + "\n\n")
 
             # Output move groups by what moves they are missing
             for key in ["checkmate", "check", "both"]:

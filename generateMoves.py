@@ -1316,6 +1316,7 @@ def outputImages(results: dict[str, resultType]) -> None:
             filePath = f"{IMAGES_FOLDER}/{piece}/{fileName}"
             generateImage(endSquare, statsBoard[endSquare], filePath)
 
+
 ############
 ### Main ###
 ############

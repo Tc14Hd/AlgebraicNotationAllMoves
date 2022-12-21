@@ -152,7 +152,7 @@ COLOR_REACHABLE  = "#dde330"
 FONT = ImageFont.truetype("./Data/roboto-regular.ttf", 70)
 
 # File and folder paths
-DIR_NAME          = os.path.dirname(__file__) 
+DIR_NAME          = os.path.dirname(__file__)
 MANUAL_MOVES_PATH = os.path.join(DIR_NAME, "../Data/manual-moves.txt")
 MOVES_PATH        = os.path.join(DIR_NAME, "../Data/moves.txt")
 STATS_PATH        = os.path.join(DIR_NAME, "../Data/stats.txt")

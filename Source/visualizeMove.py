@@ -2,7 +2,7 @@ import os, chess, chess.svg
 from cairosvg import svg2png
 
 # Paths
-dirName   = os.path.dirname(__file__) 
+dirName   = os.path.dirname(__file__)
 movesPath = os.path.join(dirName, "../Data/moves.txt")
 pngPath   = os.path.join(dirName, "../chessboard.png")
 

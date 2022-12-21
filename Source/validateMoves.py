@@ -42,7 +42,7 @@ with open(fileName, "r") as f:
             # Check whether board is valid and whether move is not overspecified
             if board.is_valid() and board.san(move) == moveStr:
                 valid += 1
-            
+
             # Invalid
             else:
                 invalid += 1

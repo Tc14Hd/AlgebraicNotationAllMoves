@@ -2,9 +2,9 @@ from __future__ import annotations
 from typing import cast, List, Tuple, TypeVar, Generic, Optional
 from itertools import product, permutations
 from copy import deepcopy
-from re import split
 from prettytable import PrettyTable
 from PIL import Image, ImageDraw, ImageFont
+import re, os
 
 
 ###############
@@ -152,10 +152,11 @@ COLOR_REACHABLE  = "#dde330"
 FONT = ImageFont.truetype("./Data/roboto-regular.ttf", 70)
 
 # File and folder paths
-MANUAL_MOVES_PATH = "./Data/manual-moves.txt"
-MOVES_PATH        = "./Data/moves.txt"
-STATS_PATH        = "./Data/stats.txt"
-IMAGES_FOLDER     = "./Images"
+DIR_NAME          = os.path.dirname(__file__) 
+MANUAL_MOVES_PATH = os.path.join(DIR_NAME, "../Data/manual-moves.txt")
+MOVES_PATH        = os.path.join(DIR_NAME, "../Data/moves.txt")
+STATS_PATH        = os.path.join(DIR_NAME, "../Data/stats.txt")
+IMAGES_FOLDER     = os.path.join(DIR_NAME, "../Images")
 
 
 #############
@@ -1069,7 +1070,7 @@ def readManualMoves() -> None:
 
             # Extract move and FEN
             line = line.rstrip()
-            lineSplit = split(" +", line, 1)
+            lineSplit = re.split(" +", line, 1)
 
             if len(lineSplit) != 2:
                 continue

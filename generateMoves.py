@@ -1064,8 +1064,8 @@ def getMovesCastle() -> resultType:
 def readManualMoves() -> None:
 
     # Read lines of file
-    with open(MANUAL_MOVES_PATH, "r") as f:
-        for line in f.readlines():
+    with open(MANUAL_MOVES_PATH, "r") as fileManualMoves:
+        for line in fileManualMoves.readlines():
 
             # Extract move and FEN
             line = line.rstrip()
@@ -1150,7 +1150,7 @@ def outputStatistics(results: dict[str, resultType]) -> None:
     finalSymbolTotal = [0] * 3
     movesTotal = 0
 
-    with open(STATS_PATH, "w") as f:
+    with open(STATS_PATH, "w") as fileStats:
 
         # For every piece
         for (piece, (moves, statsBoard)) in results.items():
@@ -1166,22 +1166,22 @@ def outputStatistics(results: dict[str, resultType]) -> None:
                     finalSymbolPiece[i] += statsBoard[square].finalSymbol[i]
 
             # Output move counts for piece
-            f.write(f"{piece} : {len(moves)} ({'/'.join(map(str, finalSymbolPiece))})\n\n")
+            fileStats.write(f"{piece} : {len(moves)} ({'/'.join(map(str, finalSymbolPiece))})\n\n")
 
             # No statistics for castle moves
             if piece == "Castle":
-                f.write("\n")
+                fileStats.write("\n")
                 continue
 
             # Only available for direction pieces
             if piece in ["Rook", "Bishop", "Queen", "Knight"]:
                 table = getDisambiguationTable(statsBoard)
-                f.write(str(table) + "\n\n")
+                fileStats.write(str(table) + "\n\n")
 
             # Output move groups by what moves they are missing
             for key in ["checkmate", "check", "both"]:
 
-                f.write(f"Missing {key}:\n")
+                fileStats.write(f"Missing {key}:\n")
                 noneMissing = True
 
                 # Only consider files [a-d] and ranks [1-4]
@@ -1191,22 +1191,22 @@ def outputStatistics(results: dict[str, resultType]) -> None:
                         for (moveGroup, fen) in statsBoard[Square(file, rank)].missingMoves[key]:
 
                             # Output move group and FEN
-                            f.write(f"{moveGroup:6} {fen}\n")
+                            fileStats.write(f"{moveGroup:6} {fen}\n")
                             noneMissing = False
 
                 if noneMissing:
-                    f.write("-\n")
-                f.write("\n")
+                    fileStats.write("-\n")
+                fileStats.write("\n")
 
-            f.write("\n")
+            fileStats.write("\n")
 
         # Output total move counts
-        f.write(f"Total : {movesTotal} ({'/'.join(map(str, finalSymbolTotal))})\n")
+        fileStats.write(f"Total : {movesTotal} ({'/'.join(map(str, finalSymbolTotal))})\n")
 
 # Output moves and their FEN to file
 def outputMoves(results: dict[str, resultType]) -> None:
 
-    with open(MOVES_PATH, "w") as f:
+    with open(MOVES_PATH, "w") as fileMoves:
 
         # For every piece
         for (moves, _) in results.values():
@@ -1215,10 +1215,10 @@ def outputMoves(results: dict[str, resultType]) -> None:
 
                 # FEN available
                 if move[1]:
-                    f.write(f"{move[0]:7} {move[1]}\n")
+                    fileMoves.write(f"{move[0]:7} {move[1]}\n")
                 # FEN unavailable
                 else:
-                    f.write(f"{move[0]}\n")
+                    fileMoves.write(f"{move[0]}\n")
 
 # Generate an image of a chessboard
 # Mark files, ranks, and squares according to statistics

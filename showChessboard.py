@@ -1,5 +1,4 @@
-import chess
-import chess.svg
+import chess, chess.svg
 from cairosvg import svg2png
 
 fileName = "./Data/moves.txt"

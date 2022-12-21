@@ -136,9 +136,17 @@ QUEEN_DIRECTIONS  = ROOK_DIRECTIONS + BISHOP_DIRECTIONS
 # FEN dictionary for manually generated moves
 MANUAL_MOVES: dict[str, str] = {}
 
+# File and folder paths
+DIR_NAME          = os.path.dirname(__file__)
+MANUAL_MOVES_PATH = os.path.join(DIR_NAME, "../Data/manual-moves.txt")
+MOVES_PATH        = os.path.join(DIR_NAME, "../Data/moves.txt")
+STATS_PATH        = os.path.join(DIR_NAME, "../Data/stats.txt")
+IMAGES_FOLDER     = os.path.join(DIR_NAME, "../Images")
+FONT_PATH         = os.path.join(DIR_NAME, "../Data/roboto-regular.ttf")
+
 # Dimensions of image
-SIDE_LENGTH = 200
-BORDER_SIZE = 150
+SIDE_LENGTH   = 200
+BORDER_SIZE   = 150
 CIRCLE_RADIUS = 50
 
 # Colors for image
@@ -149,14 +157,8 @@ COLOR_MARKED     = "#0b37ba"
 COLOR_REACHABLE  = "#dde330"
 
 # Font for image
-FONT = ImageFont.truetype("./Data/roboto-regular.ttf", 70)
-
-# File and folder paths
-DIR_NAME          = os.path.dirname(__file__)
-MANUAL_MOVES_PATH = os.path.join(DIR_NAME, "../Data/manual-moves.txt")
-MOVES_PATH        = os.path.join(DIR_NAME, "../Data/moves.txt")
-STATS_PATH        = os.path.join(DIR_NAME, "../Data/stats.txt")
-IMAGES_FOLDER     = os.path.join(DIR_NAME, "../Images")
+FONT_SIZE = 70
+FONT = ImageFont.truetype(FONT_PATH, FONT_SIZE)
 
 
 #############

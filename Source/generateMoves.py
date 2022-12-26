@@ -45,6 +45,10 @@ class Square:
     def __add__(self, offset: Offset):
         return Square(self.file + offset.file, self.rank + offset.rank, self.directionId)
 
+    # Return new square with subtracted offset
+    def __sub__(self, offset: Offset):
+        return Square(self.file - offset.file, self.rank - offset.rank, self.directionId)
+
     # Two squares are equal when their files and ranks match
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Square):
@@ -312,7 +316,7 @@ def getStartSquaresJump(endSquare: Square, jumps: list[Offset]) -> list[Square]:
 
     # For every jump
     for (directionId, jump) in enumerate(jumps):
-        startSquare = endSquare + jump
+        startSquare = endSquare - jump
         startSquare.directionId = directionId
 
         # Add square to list if it is on board
@@ -328,13 +332,13 @@ def getStartSquaresDirection(endSquare: Square, directions: list[Offset]) -> lis
 
     # For every direction
     for (directionId, direction) in enumerate(directions):
-        square = endSquare + direction
+        square = endSquare - direction
         square.directionId = directionId
 
-        # Go in this direction until edge of chessboard
+        # Go in opposite direction until edge of chessboard
         while square.onBoard():
             startSquares.append(square)
-            square += direction
+            square -= direction
 
     return startSquares
 

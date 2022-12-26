@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import cast, List, Tuple, TypeVar, Generic, Optional
+from dataclasses import dataclass
 from itertools import product, permutations
 from copy import deepcopy
 from prettytable import PrettyTable
@@ -12,16 +13,13 @@ import re, os
 ###############
 
 # Class containing file and rank offset
+@dataclass
 class Offset:
-
     file: int
     rank: int
 
-    def __init__(self, file: int, rank: int) -> None:
-        self.file = file
-        self.rank = rank
-
 # Class for a square on chessboard
+@dataclass
 class Square:
 
     # File index [0-7]
@@ -29,12 +27,7 @@ class Square:
     # Rank index [0-7]
     rank: int
     # ID of direction from which square is reachable (optional)
-    directionId: int
-
-    def __init__(self, file: int, rank: int, dirId=-1) -> None:
-        self.file = file
-        self.rank = rank
-        self.directionId = dirId
+    directionId: int = -1
 
     # Test whether square is on 8x8 chessboard
     def onBoard(self) -> bool:
@@ -1344,7 +1337,7 @@ def main() -> None:
     # Output
     outputStatistics(results)
     outputMoves(results)
-    outputImages(results)
+    #outputImages(results)
 
 if __name__ == "__main__":
     main()

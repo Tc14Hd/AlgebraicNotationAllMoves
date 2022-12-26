@@ -305,7 +305,23 @@ def fenToBoard(fen: str) -> Board[str]:
 ### Piece movement ###
 ######################
 
-# Get list of start squares from end square for direction moves
+# Get list of start squares from end square for jump pieces
+def getStartSquaresJump(endSquare: Square, jumps: list[Offset]) -> list[Square]:
+
+    startSquares: list[Square] = []
+
+    # For every jump
+    for (directionId, jump) in enumerate(jumps):
+        startSquare = endSquare + jump
+        startSquare.directionId = directionId
+
+        # Add square to list if it is on board
+        if startSquare.onBoard():
+            startSquares.append(startSquare)
+
+    return startSquares
+
+# Get list of start squares from end square for direction pieces
 def getStartSquaresDirection(endSquare: Square, directions: list[Offset]) -> list[Square]:
 
     startSquares: list[Square] = []
@@ -909,7 +925,7 @@ def getMovesDisambiguation(piece: str, endSquare: Square, startSquares: list[Squ
     return movesSquare
 
 # Get all moves of a direction piece
-def getMovesDirection(piece: str, directions: list[Offset]) -> resultType:
+def getMovesPiece(piece: str, movement: list[Offset], isJump: bool) -> resultType:
 
     moves: list[tuple[str, str]] = []
     statsBoard = Board(Stats())
@@ -918,7 +934,11 @@ def getMovesDirection(piece: str, directions: list[Offset]) -> resultType:
     for endSquare in SQUARES:
 
         # Get start squares
-        startSquares = getStartSquaresDirection(endSquare, directions)
+        if isJump:
+            startSquares = getStartSquaresJump(endSquare, movement)
+        elif piece:
+            startSquares = getStartSquaresDirection(endSquare, movement)
+
         # Generate moves and append to move list
         moves += getMovesDisambiguation(piece, endSquare, startSquares, statsBoard[endSquare])
 
@@ -997,38 +1017,19 @@ def getMovesKing() -> resultType:
 
 # Get all rook moves
 def getMovesRook() -> resultType:
-    return getMovesDirection("R", ROOK_DIRECTIONS)
+    return getMovesPiece("R", ROOK_DIRECTIONS, False)
 
 # Get all bishop moves
 def getMovesBishop() -> resultType:
-    return getMovesDirection("B", BISHOP_DIRECTIONS)
+    return getMovesPiece("B", BISHOP_DIRECTIONS, False)
 
 # Get all queen moves
 def getMovesQueen() -> resultType:
-    return getMovesDirection("Q", QUEEN_DIRECTIONS)
+    return getMovesPiece("Q", QUEEN_DIRECTIONS, False)
 
 # Get all knight moves
 def getMovesKnight() -> resultType:
-
-    moves: list[tuple[str, str]] = []
-    statsBoard = Board(Stats())
-
-    # For every end square
-    for endSquare in SQUARES:
-
-        # Find all start squares
-        startSquares: list[Square] = []
-        for (dirId, jump) in enumerate(KNIGHT_JUMPS):
-            startSquare = endSquare + jump
-            startSquare.directionId = dirId
-
-            if startSquare.onBoard():
-                startSquares.append(startSquare)
-
-        # Generate moves and append to move list
-        moves += getMovesDisambiguation("N", endSquare, startSquares, statsBoard[endSquare])
-
-    return (moves, statsBoard)
+    return getMovesPiece("N", KNIGHT_JUMPS, True)
 
 # Get all castle moves
 def getMovesCastle() -> resultType:
@@ -1337,7 +1338,7 @@ def main() -> None:
     # Output
     outputStatistics(results)
     outputMoves(results)
-    #outputImages(results)
+    outputImages(results)
 
 if __name__ == "__main__":
     main()

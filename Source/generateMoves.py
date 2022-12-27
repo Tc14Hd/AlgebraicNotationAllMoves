@@ -96,13 +96,13 @@ class Stats:
 
     def __init__(self) -> None:
 
-        self.plainMove = False
-        self.fileMove = [False] * 8
-        self.rankMove = [False] * 8
-        self.squareMove = Board(False)
-        self.reachable = Board(False)
+        self.plainMove    = False
+        self.fileMove     = [False] * 8
+        self.rankMove     = [False] * 8
+        self.squareMove   = Board(False)
+        self.reachable    = Board(False)
         self.missingMoves = {"checkmate": [], "check": [], "both": []}
-        self.finalSymbol = [0] * 3
+        self.finalSymbol  = [0] * 3
 
 # Type alias
 resultType = Tuple[List[Tuple[str, str]], Board[Stats]]
@@ -136,8 +136,10 @@ MANUAL_MOVES: dict[str, str] = {}
 # File and folder paths
 DIR_NAME          = os.path.dirname(__file__)
 MANUAL_MOVES_PATH = os.path.join(DIR_NAME, "../Data/manual-moves.txt")
-MOVES_PATH        = os.path.join(DIR_NAME, "../Data/moves.txt")
-STATS_PATH        = os.path.join(DIR_NAME, "../Data/stats.txt")
+MOVES_SAN_PATH    = os.path.join(DIR_NAME, "../Data/moves-san.txt")
+MOVES_LAN_PATH    = os.path.join(DIR_NAME, "../Data/moves-lan.txt")
+STATS_SAN_PATH    = os.path.join(DIR_NAME, "../Data/stats-san.txt")
+STATS_LAN_PATH    = os.path.join(DIR_NAME, "../Data/stats-lan.txt")
 IMAGES_FOLDER     = os.path.join(DIR_NAME, "../Images")
 FONT_PATH         = os.path.join(DIR_NAME, "../Data/roboto-regular.ttf")
 
@@ -352,7 +354,11 @@ def markAttackedSquaresJump(startSquare: Square, attackedSquares: Board[Optional
 
         # Mark end square if it is on chessboard
         if endSquare.onBoard():
-            attackedSquares[endSquare] = Square(-1, -1)
+
+            if endSquare.isAdjacent(startSquare):
+                attackedSquares[endSquare] = startSquare
+            else:
+                attackedSquares[endSquare] = Square(-1, -1)
 
 # Mark all squares that can be reached from starting square in specified directions as attacked
 def markAttackedSquaresDirection(square: Square, board: Board[str], attackedSquares: Board[Optional[Square]],
@@ -360,22 +366,22 @@ def markAttackedSquaresDirection(square: Square, board: Board[str], attackedSqua
 
     # For every direction
     for direction in directions:
-        squarePrev = square
-        squareCurr = square + direction
+        squarePrevious = square
+        squareCurrent = square + direction
 
         # Go in this direction until edge or other piece
-        while squareCurr.onBoard():
-            attackedSquares[squareCurr] = squarePrev
+        while squareCurrent.onBoard():
+            attackedSquares[squareCurrent] = squarePrevious
 
             # Direction is block by other piece
-            if board[squareCurr] != "":
+            if board[squareCurrent] != "":
                 break
 
-            squarePrev = squareCurr
-            squareCurr = squareCurr + direction
+            squarePrevious = squareCurrent
+            squareCurrent = squareCurrent + direction
 
 # Get board of attacked squares from chessboard
-# If a square is attacked by a direction move, store previous square in line of attack
+# Value of a square is another square that is adjacent and has to be kept free in order for the attack to happen
 def getAttackedSquares(board: Board[str]) -> Board[Optional[Square]]:
 
     attackedSquares: Board[Optional[Square]] = Board(None)
@@ -437,7 +443,7 @@ def placeWhiteKing(board: Board[str], keepFree: Board[bool], attackedSquaresAfte
 def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Board[str], boardAfter: Board[str],
     attackedSquaresAfter: Board[Optional[Square]]) -> bool:
 
-    previousLineOfAttackSquare = cast(Square, attackedSquaresAfter[blackKingSquare])
+    keepFreeForAttack = cast(Square, attackedSquaresAfter[blackKingSquare])
 
     # Plan to place four rooks in corners of 3x3 box around black king
     rookSquares: list[Square] = []
@@ -456,21 +462,21 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
     elif (blackKingSquare.file in [0, 7]) or (blackKingSquare.rank in [0, 7]):
 
         # Rook blocks attack on black king
-        if previousLineOfAttackSquare in rookSquares:
+        if keepFreeForAttack in rookSquares:
 
             # If attacker is next to black king, it has to be protected
             # Otherwise it could be taken by black king and it wouldn't be checkmate
-            if boardAfter[previousLineOfAttackSquare].isupper():
-                if not attackedSquaresAfter[previousLineOfAttackSquare]:
+            if boardAfter[keepFreeForAttack].isupper():
+                if not attackedSquaresAfter[keepFreeForAttack]:
                     return False
 
             # Remove blocking rook
-            rookSquares.remove(previousLineOfAttackSquare)
+            rookSquares.remove(keepFreeForAttack)
 
             # Place bishop next to black king and rook
             # Place knight on edge such that it defends rook
-            knightSquare = Square(blackKingSquare.file, previousLineOfAttackSquare.rank)
-            bishopSquare = Square(previousLineOfAttackSquare.file, blackKingSquare.rank)
+            knightSquare = Square(blackKingSquare.file, keepFreeForAttack.rank)
+            bishopSquare = Square(keepFreeForAttack.file, blackKingSquare.rank)
 
             if (bishopSquare.file in [0, 7]) or (bishopSquare.rank in [0, 7]):
                 (knightSquare, bishopSquare) = (bishopSquare, knightSquare)
@@ -487,7 +493,7 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
         else:
 
             # Moving a rook next to black king as an attacker messes up disambiguation
-            if boardAfter[endSquare] == "R" and previousLineOfAttackSquare == endSquare:
+            if boardAfter[endSquare] == "R" and endSquare.isAdjacent(blackKingSquare):
                 return False
 
             # Result:
@@ -499,12 +505,12 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
     else:
 
         # Moving a rook next to black king as an attacker messes up disambiguation
-        if boardAfter[endSquare] == "R" and previousLineOfAttackSquare == endSquare:
+        if boardAfter[endSquare] == "R" and endSquare.isAdjacent(blackKingSquare):
             return False
 
         # Remove rook when it blocks attack on black king
-        if previousLineOfAttackSquare in rookSquares:
-            rookSquares.remove(previousLineOfAttackSquare)
+        if keepFreeForAttack in rookSquares:
+            rookSquares.remove(keepFreeForAttack)
         # Otherwise remove arbitrary rook
         else:
             rookSquares.pop()
@@ -653,12 +659,8 @@ def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: 
         if hasWhiteKing and square.isAdjacent(endSquare):
             continue
 
+        # Check for checkmate
         checkmate = True
-        adjacentAllPlacable = True
-        previousLineOfAttackSquare = cast(Square, attackedSquaresAfter[square])
-
-        # Check for checkmate and whether we can place a piece on all adjacent squares
-        # Except previous square in line of attack
         for jump in KING_JUMPS:
 
             adjacentSquare = square + jump
@@ -668,10 +670,7 @@ def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: 
             # Found unattacked square
             if not attackedSquaresAfter[adjacentSquare]:
                 checkmate = False
-
-            # Square is not previous square in the line of attack and not placable
-            if adjacentSquare != previousLineOfAttackSquare and keepFree[adjacentSquare]:
-                adjacentAllPlacable = False
+                break
 
         # Checkmate found
         if checkmate:
@@ -680,7 +679,27 @@ def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: 
             squareBlackKing = square
             break
 
-        # All adjacent squares are vacant
+        # Check whether pieces can be placed on all adjacent squares
+        # Except for square that has to be kept free for attack
+        adjacentAllPlacable = True
+        keepFreeForAttack = cast(Square, attackedSquaresAfter[square])
+
+        for jump in KING_JUMPS:
+
+            adjacentSquare = square + jump
+            if not adjacentSquare.onBoard():
+                continue
+
+            # Exclude square that has to be kept free for attack
+            if adjacentSquare == keepFreeForAttack:
+                continue
+
+            # Square is not placable
+            if keepFree[adjacentSquare]:
+                adjacentAllPlacable = False
+                break
+
+        # All adjacent squares are placable
         if adjacentAllPlacable:
             # Place white piece around black king
             if boxInBlackKing(square, endSquare, boardBefore, boardAfter, attackedSquaresAfter):
@@ -844,11 +863,11 @@ def insertMoves(moves: list[tuple[str, str]], moveStart: str, moveEnd: str, fenG
     return moveInserted
 
 
-######################
-### Generate moves ###
-######################
+##########################
+### Generate SAN moves ###
+##########################
 
-# Get all moves of one end square for a piece with disambiguation moves
+# Get all SAN moves of one end square for a piece with disambiguation moves
 def getMovesDisambiguation(piece: str, endSquare: Square, startSquares: list[Square], stats: Stats
     ) -> list[tuple[str, str]]:
 
@@ -928,8 +947,8 @@ def getMovesDisambiguation(piece: str, endSquare: Square, startSquares: list[Squ
 
     return movesSquare
 
-# Get all moves of a direction piece
-def getMovesPiece(piece: str, movement: list[Offset], isJump: bool) -> resultType:
+# Get all SAN moves of a piece
+def getMovesPieceSan(piece: str, movement: list[Offset], isJump: bool) -> resultType:
 
     moves: list[tuple[str, str]] = []
     statsBoard = Board(Stats())
@@ -948,8 +967,8 @@ def getMovesPiece(piece: str, movement: list[Offset], isJump: bool) -> resultTyp
 
     return (moves, statsBoard)
 
-# Get all pawn moves
-def getMovesPawn() -> resultType:
+# Get all pawn SAN moves
+def getMovesPawnSan() -> resultType:
 
     moves: list[tuple[str, str]] = []
     statsBoard = Board(Stats())
@@ -970,6 +989,7 @@ def getMovesPawn() -> resultType:
         # For every promotion option (piece or no promotion)
         promotionOptions = PROMOTION if endSquare.rank == 7 else [""]
         for promotePiece in promotionOptions:
+
             promote = "" if promotePiece == "" else "=" + promotePiece
 
             # Generate non-capture moves
@@ -996,8 +1016,8 @@ def getMovesPawn() -> resultType:
 
     return (moves, statsBoard)
 
-# Get all king moves
-def getMovesKing() -> resultType:
+# Get all king SAN moves
+def getMovesKingSan() -> resultType:
 
     moves: list[tuple[str, str]] = []
     statsBoard = Board(Stats())
@@ -1007,33 +1027,31 @@ def getMovesKing() -> resultType:
         fenGroup = getEmptyFenGroup()
 
         # For every adjacent square as start square
-        for jump in KING_JUMPS:
-            startSquare = endSquare + jump
-            if startSquare.onBoard():
+        for startSquare in getStartSquaresJump(endSquare, KING_JUMPS):
 
-                # Update FEN group
-                updateFenGroup(fenGroup, "K", startSquare, endSquare, [])
+            # Update FEN group
+            updateFenGroup(fenGroup, "K", startSquare, endSquare, [])
 
         # Insert moves into move list
         insertMoves(moves, "K", str(endSquare), fenGroup, statsBoard[startSquare])
 
     return (moves, statsBoard)
 
-# Get all rook moves
-def getMovesRook() -> resultType:
-    return getMovesPiece("R", ROOK_DIRECTIONS, False)
+# Get all rook SAN moves
+def getMovesRookSan() -> resultType:
+    return getMovesPieceSan("R", ROOK_DIRECTIONS, False)
 
-# Get all bishop moves
-def getMovesBishop() -> resultType:
-    return getMovesPiece("B", BISHOP_DIRECTIONS, False)
+# Get all bishop SAN moves
+def getMovesBishopSan() -> resultType:
+    return getMovesPieceSan("B", BISHOP_DIRECTIONS, False)
 
-# Get all queen moves
-def getMovesQueen() -> resultType:
-    return getMovesPiece("Q", QUEEN_DIRECTIONS, False)
+# Get all queen SAN moves
+def getMovesQueenSan() -> resultType:
+    return getMovesPieceSan("Q", QUEEN_DIRECTIONS, False)
 
-# Get all knight moves
-def getMovesKnight() -> resultType:
-    return getMovesPiece("N", KNIGHT_JUMPS, True)
+# Get all knight SAN moves
+def getMovesKnightSan() -> resultType:
+    return getMovesPieceSan("N", KNIGHT_JUMPS, True)
 
 # Get all castle moves
 def getMovesCastle() -> resultType:
@@ -1042,7 +1060,7 @@ def getMovesCastle() -> resultType:
     statsBoard = Board(Stats())
     stats = statsBoard[Square(0, 0)]
 
-    # Short and long castle
+    # San and Lan castle
     for castle in ["O-O", "O-O-O"]:
 
         # For every final symbol
@@ -1055,6 +1073,115 @@ def getMovesCastle() -> resultType:
                 stats.finalSymbol[i] += 1
 
     return (moves, statsBoard)
+
+
+##########################
+### Generate LAN moves ###
+##########################
+
+# Get all pawn LAN moves
+def getMovesPawnLan() -> resultType:
+
+    moves: list[tuple[str, str]] = []
+    statsBoard = Board(Stats())
+
+    for flipForPawn in [False, True]:
+
+        getStr = lambda square: flipFileRank(str(square), False, flipForPawn)
+
+        # For every end square that isn't on the first two ranks
+        for endSquare in SQUARES:
+
+            if endSquare.rank < 2:
+                continue
+
+            stats = statsBoard[endSquare]
+
+            # For every promotion option (piece or no promotion)
+            promotionOptions = PROMOTION if endSquare.rank == 7 else [""]
+            for promotePiece in promotionOptions:
+
+                promote = "" if promotePiece == "" else "=" + promotePiece
+                moveEnd = getStr(endSquare) + promote
+
+                # Generate non-capture one-square moves
+                startSquare = endSquare + Offset(0, -1)
+                fenGroup = getEmptyFenGroup()
+                updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
+
+                # FEN group also contains capture moves, so delete them before insertion into move list
+                fenGroup[1] = [None] * 3
+                insertMoves(moves, getStr(startSquare), moveEnd, fenGroup, stats)
+
+                # Generate non-capture two-square moves
+                if endSquare.rank == 3:
+                    startSquare = endSquare + Offset(0, -2)
+                    fenGroup = getEmptyFenGroup()
+                    updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
+
+                    # FEN group also contains capture moves, so delete them before insertion into move list
+                    fenGroup[1] = [None] * 3
+                    insertMoves(moves, getStr(startSquare), moveEnd, fenGroup, stats)
+
+                # Check both adjacent files
+                for offset in [Offset(-1, -1), Offset(1, -1)]:
+                    startSquare = endSquare + offset
+                    if startSquare.onBoard():
+
+                        # Generate capture moves
+                        fenGroup = getEmptyFenGroup()
+                        updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
+
+                        # FEN group also contains non-capture moves, so delete them before insertion into move list
+                        fenGroup[0] = [None] * 3
+                        insertMoves(moves, getStr(startSquare), moveEnd, fenGroup, stats)
+
+    return (moves, statsBoard)
+
+# Get all LAN moves of a piece
+def getMovesPieceLan(piece: str, movement: list[Offset], isJump: bool) -> resultType:
+
+    moves: list[tuple[str, str]] = []
+    statsBoard = Board(Stats())
+
+    # For every end square
+    for endSquare in SQUARES:
+
+        # Get start squares
+        if isJump:
+            startSquares = getStartSquaresJump(endSquare, movement)
+        elif piece:
+            startSquares = getStartSquaresDirection(endSquare, movement)
+
+        # For every start square
+        for startSquare in startSquares:
+
+            # Generate moves and append to move list
+            fenGroup = getEmptyFenGroup()
+            updateFenGroup(fenGroup, piece, startSquare, endSquare, [])
+            insertMoves(moves, piece + str(startSquare), str(endSquare), fenGroup, statsBoard[endSquare])
+
+    return (moves, statsBoard)
+
+# Get all king LAN moves
+def getMovesKingLan() -> resultType:
+    return getMovesPieceLan("K", KING_JUMPS, True)
+
+# Get all rook LAN moves
+def getMovesRookLan() -> resultType:
+    return getMovesPieceLan("R", ROOK_DIRECTIONS, False)
+
+# Get all bishop LAN moves
+def getMovesBishopLan() -> resultType:
+    return getMovesPieceLan("B", BISHOP_DIRECTIONS, False)
+
+# Get all queen LAN moves
+def getMovesQueenLan() -> resultType:
+    return getMovesPieceLan("Q", QUEEN_DIRECTIONS, False)
+
+# Get all knight LAN moves
+def getMovesKnightLan() -> resultType:
+    return getMovesPieceLan("N", KNIGHT_JUMPS, True)
 
 
 ####################
@@ -1146,12 +1273,12 @@ def getDisambiguationTable(statsBoard: Board[Stats]) -> PrettyTable:
     return table
 
 # Output statistics to file
-def outputStatistics(results: dict[str, resultType]) -> None:
+def outputStatistics(results: dict[str, resultType], filePath: str, isSan: bool) -> None:
 
     finalSymbolTotal = [0] * 3
     movesTotal = 0
 
-    with open(STATS_PATH, "w") as fileStats:
+    with open(filePath, "w") as fileStats:
 
         # For every piece
         for (piece, (moves, statsBoard)) in results.items():
@@ -1174,8 +1301,9 @@ def outputStatistics(results: dict[str, resultType]) -> None:
                 fileStats.write("\n")
                 continue
 
-            # Only available for direction pieces
-            if piece in ["Rook", "Bishop", "Queen", "Knight"]:
+            # Output disambiguation table
+            # Only available for SAN moves of rook, bishop, queen, and knight
+            if isSan and piece in ["Rook", "Bishop", "Queen", "Knight"]:
                 table = getDisambiguationTable(statsBoard)
                 fileStats.write(str(table) + "\n\n")
 
@@ -1205,9 +1333,12 @@ def outputStatistics(results: dict[str, resultType]) -> None:
         fileStats.write(f"Total : {movesTotal} ({'/'.join(map(str, finalSymbolTotal))})\n")
 
 # Output moves and their FEN to file
-def outputMoves(results: dict[str, resultType]) -> None:
+def outputMoves(results: dict[str, resultType], filePath: str, isSan: bool) -> None:
 
-    with open(MOVES_PATH, "w") as fileMoves:
+    # Width is determined by largest move string
+    width = 7 if isSan else 8
+
+    with open(filePath, "w") as fileMoves:
 
         # For every piece
         for (moves, _) in results.values():
@@ -1216,7 +1347,7 @@ def outputMoves(results: dict[str, resultType]) -> None:
 
                 # FEN available
                 if move[1]:
-                    fileMoves.write(f"{move[0]:7} {move[1]}\n")
+                    fileMoves.write(f"{move[0]:{width}} {move[1]}\n")
                 # FEN unavailable
                 else:
                     fileMoves.write(f"{move[0]}\n")
@@ -1328,21 +1459,35 @@ def main() -> None:
     # Read manual moves from file
     readManualMoves()
 
-    # Generate all moves
-    results = {
-        "Pawn"   : getMovesPawn(),
-        "King"   : getMovesKing(),
-        "Rook"   : getMovesRook(),
-        "Bishop" : getMovesBishop(),
-        "Queen"  : getMovesQueen(),
-        "Knight" : getMovesKnight(),
+    # Generate all SAN moves
+    resultsSan = {
+        "Pawn"   : getMovesPawnSan(),
+        "King"   : getMovesKingSan(),
+        "Rook"   : getMovesRookSan(),
+        "Bishop" : getMovesBishopSan(),
+        "Queen"  : getMovesQueenSan(),
+        "Knight" : getMovesKnightSan(),
+        "Castle" : getMovesCastle()
+    }
+
+    # Generate all LAN moves
+    resultsLan = {
+        "Pawn"   : getMovesPawnLan(),
+        "King"   : getMovesKingLan(),
+        "Rook"   : getMovesRookLan(),
+        "Bishop" : getMovesBishopLan(),
+        "Queen"  : getMovesQueenLan(),
+        "Knight" : getMovesKnightLan(),
         "Castle" : getMovesCastle()
     }
 
     # Output
-    outputStatistics(results)
-    outputMoves(results)
-    outputImages(results)
+    outputMoves(resultsSan, MOVES_SAN_PATH, True)
+    outputMoves(resultsLan, MOVES_LAN_PATH, False)
+
+    outputStatistics(resultsSan, STATS_SAN_PATH, True)
+    outputStatistics(resultsLan, STATS_LAN_PATH, False)
+    #outputImages(resultsSan)
 
 if __name__ == "__main__":
     main()

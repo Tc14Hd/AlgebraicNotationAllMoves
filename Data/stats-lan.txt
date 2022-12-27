@@ -1,0 +1,106 @@
+Pawn : 1236 (412/412/412)
+
+Missing checkmate:
+-
+
+Missing check:
+-
+
+Missing both:
+-
+
+
+King : 2280 (840/720/720)
+
+Missing checkmate:
+-
+
+Missing check:
+-
+
+Missing both:
+Ka2a1  8/8/8/8/k7/8/K7/8 w - - 0 1
+Ka2xa1 8/8/8/8/k7/8/K7/n7 w - - 0 1
+Kb1a1  8/8/8/8/8/k7/8/1K6 w - - 0 1
+Kb1xa1 8/8/8/8/8/k7/8/nK6 w - - 0 1
+Ka1a2  8/8/8/8/k7/8/8/K7 w - - 0 1
+Ka1xa2 8/8/8/8/k7/8/n7/K7 w - - 0 1
+Ka3a2  8/8/8/k7/8/K7/8/8 w - - 0 1
+Ka3xa2 8/8/8/k7/8/K7/n7/8 w - - 0 1
+Ka2a3  8/8/8/k7/8/8/K7/8 w - - 0 1
+Ka2xa3 8/8/8/k7/8/n7/K7/8 w - - 0 1
+Ka4a3  8/8/8/8/K7/8/8/k7 w - - 0 1
+Ka4xa3 8/8/8/8/K7/n7/8/k7 w - - 0 1
+Ka3a4  8/8/8/8/8/K7/8/k7 w - - 0 1
+Ka3xa4 8/8/8/8/n7/K7/8/k7 w - - 0 1
+Ka5a4  8/8/8/K7/8/8/8/k7 w - - 0 1
+Ka5xa4 8/8/8/K7/n7/8/8/k7 w - - 0 1
+Ka1b1  8/8/8/8/8/k7/8/K7 w - - 0 1
+Ka1xb1 8/8/8/8/8/k7/8/Kn6 w - - 0 1
+Kc1b1  8/8/8/8/8/k7/8/2K5 w - - 0 1
+Kc1xb1 8/8/8/8/8/k7/8/1nK5 w - - 0 1
+Ka1b2  8/8/8/8/k7/8/8/K7 w - - 0 1
+Ka1xb2 8/8/8/8/k7/8/1n6/K7 w - - 0 1
+Kb1c1  8/8/8/8/8/k7/8/1K6 w - - 0 1
+Kb1xc1 8/8/8/8/8/k7/8/1Kn5 w - - 0 1
+Kd1c1  8/8/8/8/8/8/8/k2K4 w - - 0 1
+Kd1xc1 8/8/8/8/8/8/8/k1nK4 w - - 0 1
+Kc1d1  8/8/8/8/8/8/8/k1K5 w - - 0 1
+Kc1xd1 8/8/8/8/8/8/8/k1Kn4 w - - 0 1
+Ke1d1  8/8/8/8/8/8/8/k3K3 w - - 0 1
+Ke1xd1 8/8/8/8/8/8/8/k2nK3 w - - 0 1
+
+
+Rook : 5376 (1792/1792/1792)
+
+Missing checkmate:
+-
+
+Missing check:
+-
+
+Missing both:
+-
+
+
+Bishop : 3344 (1120/1112/1112)
+
+Missing checkmate:
+-
+
+Missing check:
+-
+
+Missing both:
+Bh8a1  7B/8/8/K7/8/8/k7/8 w - - 0 1
+Bh8xa1 7B/8/8/K7/8/8/k7/n7 w - - 0 1
+
+
+Queen : 8736 (2912/2912/2912)
+
+Missing checkmate:
+-
+
+Missing check:
+-
+
+Missing both:
+-
+
+
+Knight : 2016 (672/672/672)
+
+Missing checkmate:
+-
+
+Missing check:
+-
+
+Missing both:
+-
+
+
+Castle : 6 (2/2/2)
+
+
+Total : 22994 (7750/7622/7622)

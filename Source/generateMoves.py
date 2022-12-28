@@ -1246,6 +1246,10 @@ def readManualMoves() -> None:
     with open(MANUAL_MOVES_PATH, "r") as fileManualMoves:
         for line in fileManualMoves.readlines():
 
+            # Comment
+            if line.startswith("#"):
+                continue
+
             # Extract move and FEN
             line = line.rstrip()
             lineSplit = re.split(" +", line, 1)

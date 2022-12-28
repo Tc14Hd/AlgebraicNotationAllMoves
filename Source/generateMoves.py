@@ -5,6 +5,7 @@ from itertools import product, permutations
 from copy import deepcopy
 from prettytable import PrettyTable
 from PIL import Image, ImageDraw, ImageFont
+from argparse import ArgumentParser
 import re, os
 
 
@@ -381,7 +382,7 @@ def markAttackedSquaresDirection(square: Square, board: Board[str], attackedSqua
             squareCurrent = squareCurrent + direction
 
 # Get board of attacked squares from chessboard
-# Value of a square is another square that is adjacent and has to be kept free in order for the attack to happen
+# The value of a square is an adjacent square that has to be kept free in order for the attack to happen
 def getAttackedSquares(board: Board[str]) -> Board[Optional[Square]]:
 
     attackedSquares: Board[Optional[Square]] = Board(None)
@@ -1456,38 +1457,59 @@ def outputImages(results: dict[str, resultType]) -> None:
 # Main program
 def main() -> None:
 
+    # Parse command line arguments
+    parser = ArgumentParser()
+    parser.add_argument("--no-san", action="store_true", help="don't generate SAN moves")
+    parser.add_argument("--no-lan", action="store_true", help="don't generate LAN moves")
+    parser.add_argument("--images", action="store_true", help="generate disambiguation images")
+    arguments = parser.parse_args()
+
+    san = not arguments.no_san
+    lan = not arguments.no_lan
+    images = arguments.images
+
     # Read manual moves from file
     readManualMoves()
 
-    # Generate all SAN moves
-    resultsSan = {
-        "Pawn"   : getMovesPawnSan(),
-        "King"   : getMovesKingSan(),
-        "Rook"   : getMovesRookSan(),
-        "Bishop" : getMovesBishopSan(),
-        "Queen"  : getMovesQueenSan(),
-        "Knight" : getMovesKnightSan(),
-        "Castle" : getMovesCastle()
-    }
+    # SAN moves
+    if san:
 
-    # Generate all LAN moves
-    resultsLan = {
-        "Pawn"   : getMovesPawnLan(),
-        "King"   : getMovesKingLan(),
-        "Rook"   : getMovesRookLan(),
-        "Bishop" : getMovesBishopLan(),
-        "Queen"  : getMovesQueenLan(),
-        "Knight" : getMovesKnightLan(),
-        "Castle" : getMovesCastle()
-    }
+        # Generate moves
+        resultsSan = {
+            "Pawn"   : getMovesPawnSan(),
+            "King"   : getMovesKingSan(),
+            "Rook"   : getMovesRookSan(),
+            "Bishop" : getMovesBishopSan(),
+            "Queen"  : getMovesQueenSan(),
+            "Knight" : getMovesKnightSan(),
+            "Castle" : getMovesCastle()
+        }
 
-    # Output
-    outputMoves(resultsSan, MOVES_SAN_PATH, True)
-    outputMoves(resultsLan, MOVES_LAN_PATH, False)
+        # Output
+        outputMoves(resultsSan, MOVES_SAN_PATH, True)
+        outputStatistics(resultsSan, STATS_SAN_PATH, True)
 
-    outputStatistics(resultsSan, STATS_SAN_PATH, True)
-    outputStatistics(resultsLan, STATS_LAN_PATH, False)
-    #outputImages(resultsSan)
+    # LAN moves
+    if lan:
+
+        # Generate moves
+        resultsLan = {
+            "Pawn"   : getMovesPawnLan(),
+            "King"   : getMovesKingLan(),
+            "Rook"   : getMovesRookLan(),
+            "Bishop" : getMovesBishopLan(),
+            "Queen"  : getMovesQueenLan(),
+            "Knight" : getMovesKnightLan(),
+            "Castle" : getMovesCastle()
+        }
+
+        # Output
+        outputMoves(resultsLan, MOVES_LAN_PATH, False)
+        outputStatistics(resultsLan, STATS_LAN_PATH, False)
+
+    # Generate disambiguation images
+    if images and san:
+        outputImages(resultsSan)
 
 if __name__ == "__main__":
     main()

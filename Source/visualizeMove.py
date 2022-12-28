@@ -3,7 +3,7 @@ from cairosvg import svg2png
 
 # Paths
 dirName   = os.path.dirname(__file__)
-movesPath = os.path.join(dirName, "../Data/moves.txt")
+movesPath = os.path.join(dirName, "../Data/moves-san.txt")
 pngPath   = os.path.join(dirName, "../chessboard.png")
 
 # Dimensions of PNG

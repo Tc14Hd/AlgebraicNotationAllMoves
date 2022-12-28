@@ -9,9 +9,11 @@ MOVE_LAN_PATH = os.path.join(DIR_NAME, "../Data/moves-lan.txt")
 def validateMoves(filePath: str, isSan: bool, text: str) -> None:
 
     # Counters
-    valid    = 0
-    invalid  = 0
-    noFen    = 0
+    valid      = 0
+    invalid    = 0
+    noFen      = 0
+    duplicates = 0
+    moveSet    = set()
 
     # Read moves and their FENs from file
     with open(filePath, "r") as f:
@@ -22,6 +24,7 @@ def validateMoves(filePath: str, isSan: bool, text: str) -> None:
             # No FEN
             pos = line.find(" ")
             if pos == -1:
+                moveStr = line
                 noFen += 1
 
             # FEN
@@ -39,7 +42,7 @@ def validateMoves(filePath: str, isSan: bool, text: str) -> None:
                 # Invalid board or move
                 except ValueError:
                     invalid += 1
-                    print(line)
+                    print(f"Invalid {line}")
                     continue
 
                 # Check whether board is valid                 
@@ -51,13 +54,19 @@ def validateMoves(filePath: str, isSan: bool, text: str) -> None:
                 # Invalid
                 else:
                     invalid += 1
-                    print(line)
+                    print(f"Invalid {line}")
+
+            # Check for duplicate move
+            if moveStr in moveSet:
+                print(f"Duplicate {moveStr}")
+            moveSet.add(moveStr)
 
     # Output results
     print(text)
-    print(f"Valid   : {valid}")
-    print(f"Invalid : {invalid}")
-    print(f"No FEN  : {noFen}")
+    print(f"Valid      : {valid}")
+    print(f"Invalid    : {invalid}")
+    print(f"No FEN     : {noFen}")
+    print(f"Duplicates : {duplicates}")
 
 
 if __name__ == "__main__":

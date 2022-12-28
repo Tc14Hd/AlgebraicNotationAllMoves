@@ -192,7 +192,7 @@ def strToSquare(squareStr: str) -> Square:
     return Square(strToFile(squareStr[0]), strToRank(squareStr[1]))
 
 # Flip files from [a-h] to [h-a] and ranks from [1-8] to [8-1] if corresponding flags are set
-def flipFileRank(string: str, flipFiles: bool, flipRanks: bool) -> str:
+def flipFileRank(string: str, flipFiles = False, flipRanks = False) -> str:
 
     stringNew = ""
     for c in string:
@@ -208,10 +208,10 @@ def flipFileRank(string: str, flipFiles: bool, flipRanks: bool) -> str:
 
     return stringNew
 
-# Get an empty 2D array as FEN group
+# Get an empty 2D array as move group
 # First Dimension  | 0 No Capture | 1 Capture
 # Second Dimension | 0 Nothing    | 1 Check   | 2 Checkmate
-def getEmptyFenGroup() -> list[list[Optional[str]]]:
+def getEmptyMoveGroup() -> list[list[Optional[Board[str]]]]:
     return [[None] * 3 for _ in range(2)]
 
 # Parse move string into its parts
@@ -243,7 +243,7 @@ def parseMove(move: str) -> tuple[str, str, str, str, str]:
 
 # Get FEN of a chessboard
 # Flip ranks, flip files, or swap color of pieces if corresponding flags are set
-def boardToFen(board: Board[str], flipFiles=False, flipRanks=False, swapPlayers=False) -> str:
+def chessboardToFen(chessboard: Board[str], flipFiles=False, flipRanks=False, swapPlayers=False) -> str:
 
     ranks: list[str] = []
     # Loop through ranks in specified order
@@ -256,7 +256,7 @@ def boardToFen(board: Board[str], flipFiles=False, flipRanks=False, swapPlayers=
             square = Square(file, rank)
 
             # Empty square
-            if board[square] == "":
+            if chessboard[square] == "":
                 emptySquares += 1
             # Piece
             else:
@@ -269,9 +269,9 @@ def boardToFen(board: Board[str], flipFiles=False, flipRanks=False, swapPlayers=
                 # Append piece
                 # Swap color of piece if specified
                 if swapPlayers:
-                    rankStr += board[square].swapcase()
+                    rankStr += chessboard[square].swapcase()
                 else:
-                    rankStr += board[square]
+                    rankStr += chessboard[square]
 
         # Append number of empty squares
         if emptySquares > 0:
@@ -281,17 +281,17 @@ def boardToFen(board: Board[str], flipFiles=False, flipRanks=False, swapPlayers=
 
     # Build FEN string
     player = "b" if swapPlayers else "w"
-    boardStr = "/".join(ranks)
-    fen = f"{boardStr} {player} - - 0 1"
+    chessboardStr = "/".join(ranks)
+    fen = f"{chessboardStr} {player} - - 0 1"
 
     return fen
 
-# Get chessboard from a FEN
-def fenToBoard(fen: str) -> Board[str]:
+# Get chessboard from FEN
+def fenToChessboard(fen: str) -> Board[str]:
 
-    board = Board("")
-    boardStr = fen.split(" ")[0]
-    ranks = boardStr.split("/")
+    chessboard = Board("")
+    chessboardStr = fen.split(" ")[0]
+    ranks = chessboardStr.split("/")
 
     # Loop through ranks from 7 to 0
     for rank in range(7, -1, -1):
@@ -302,11 +302,26 @@ def fenToBoard(fen: str) -> Board[str]:
                 file += int(c)
             # Piece
             else:
-                board[Square(file, rank)] = c
+                chessboard[Square(file, rank)] = c
                 file += 1
 
-    return board
+    return chessboard
 
+# Check for checkmate
+def isCheckmate(squareKing: Square, attackedSquares: Board[Optional[Square]]) -> bool:
+
+    # Check all adjacent squares
+    for jump in KING_JUMPS:
+
+        adjacentSquare = squareKing + jump
+        if not adjacentSquare.onBoard():
+            continue
+
+        # Found unattacked square
+        if not attackedSquares[adjacentSquare]:
+            return False
+
+    return True
 
 ######################
 ### Piece movement ###
@@ -322,7 +337,7 @@ def getStartSquaresJump(endSquare: Square, jumps: list[Offset]) -> list[Square]:
         startSquare = endSquare - jump
         startSquare.directionId = directionId
 
-        # Add square to list if it is on board
+        # Add square to list if it is on chessboard
         if startSquare.onBoard():
             startSquares.append(startSquare)
 
@@ -362,7 +377,7 @@ def markAttackedSquaresJump(startSquare: Square, attackedSquares: Board[Optional
                 attackedSquares[endSquare] = Square(-1, -1)
 
 # Mark all squares that can be reached from starting square in specified directions as attacked
-def markAttackedSquaresDirection(square: Square, board: Board[str], attackedSquares: Board[Optional[Square]],
+def markAttackedSquaresDirection(square: Square, chessboard: Board[str], attackedSquares: Board[Optional[Square]],
     directions: list[Offset]) -> None:
 
     # For every direction
@@ -375,7 +390,7 @@ def markAttackedSquaresDirection(square: Square, board: Board[str], attackedSqua
             attackedSquares[squareCurrent] = squarePrevious
 
             # Direction is block by other piece
-            if board[squareCurrent] != "":
+            if chessboard[squareCurrent] != "":
                 break
 
             squarePrevious = squareCurrent
@@ -383,12 +398,12 @@ def markAttackedSquaresDirection(square: Square, board: Board[str], attackedSqua
 
 # Get board of attacked squares from chessboard
 # The value of a square is an adjacent square that has to be kept free in order for the attack to happen
-def getAttackedSquares(board: Board[str]) -> Board[Optional[Square]]:
+def getAttackedSquares(chessboard: Board[str]) -> Board[Optional[Square]]:
 
     attackedSquares: Board[Optional[Square]] = Board(None)
 
     for square in SQUARES:
-        piece = board[square]
+        piece = chessboard[square]
 
         if piece == "P":   # Pawn
             markAttackedSquaresJump(square, attackedSquares, PAWN_JUMPS)
@@ -397,22 +412,22 @@ def getAttackedSquares(board: Board[str]) -> Board[Optional[Square]]:
         elif piece == "N": # Knight
             markAttackedSquaresJump(square, attackedSquares, KNIGHT_JUMPS)
         elif piece == "B": # Bishop
-            markAttackedSquaresDirection(square, board, attackedSquares, BISHOP_DIRECTIONS)
+            markAttackedSquaresDirection(square, chessboard, attackedSquares, BISHOP_DIRECTIONS)
         elif piece == "R": # Rook
-            markAttackedSquaresDirection(square, board, attackedSquares, ROOK_DIRECTIONS)
+            markAttackedSquaresDirection(square, chessboard, attackedSquares, ROOK_DIRECTIONS)
         elif piece == "Q": # Queen
-            markAttackedSquaresDirection(square, board, attackedSquares, QUEEN_DIRECTIONS)
+            markAttackedSquaresDirection(square, chessboard, attackedSquares, QUEEN_DIRECTIONS)
 
     return attackedSquares
 
 
-######################
-### Generate FENs ####
-######################
+#############################
+### Generate chessboards ####
+#############################
 
 # Place white king on chessboard
 # Return whether placement was possible
-def placeWhiteKing(board: Board[str], keepFree: Board[bool], attackedSquaresAfter: Board[Optional[Square]],
+def placeWhiteKing(chessboard: Board[str], keepFree: Board[bool], attackedSquaresAfter: Board[Optional[Square]],
     squareBlackKing: Square) -> bool:
 
     # Test all square
@@ -433,7 +448,7 @@ def placeWhiteKing(board: Board[str], keepFree: Board[bool], attackedSquaresAfte
             continue
 
         # Place white king
-        board[square] = "K"
+        chessboard[square] = "K"
         return True
 
     # White king couldn't be placed
@@ -441,7 +456,7 @@ def placeWhiteKing(board: Board[str], keepFree: Board[bool], attackedSquaresAfte
 
 # Place white pieces around black king such that all squares adjacent to it are attacked
 # Return whether placement was possible
-def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Board[str], boardAfter: Board[str],
+def boxInBlackKing(blackKingSquare: Square, endSquare: Square, chessboardBefore: Board[str], chessboardAfter: Board[str],
     attackedSquaresAfter: Board[Optional[Square]]) -> bool:
 
     keepFreeForAttack = cast(Square, attackedSquaresAfter[blackKingSquare])
@@ -467,7 +482,7 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
 
             # If attacker is next to black king, it has to be protected
             # Otherwise it could be taken by black king and it wouldn't be checkmate
-            if boardAfter[keepFreeForAttack].isupper():
+            if chessboardAfter[keepFreeForAttack].isupper():
                 if not attackedSquaresAfter[keepFreeForAttack]:
                     return False
 
@@ -482,8 +497,8 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
             if (bishopSquare.file in [0, 7]) or (bishopSquare.rank in [0, 7]):
                 (knightSquare, bishopSquare) = (bishopSquare, knightSquare)
 
-            boardBefore[knightSquare] = "N"
-            boardBefore[bishopSquare] = "B"
+            chessboardBefore[knightSquare] = "N"
+            chessboardBefore[bishopSquare] = "B"
 
             # Result:
             # . B R        R B .
@@ -494,7 +509,7 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
         else:
 
             # Moving a rook next to black king as an attacker messes up disambiguation
-            if boardAfter[endSquare] == "R" and endSquare.isAdjacent(blackKingSquare):
+            if chessboardAfter[endSquare] == "R" and endSquare.isAdjacent(blackKingSquare):
                 return False
 
             # Result:
@@ -506,7 +521,7 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
     else:
 
         # Moving a rook next to black king as an attacker messes up disambiguation
-        if boardAfter[endSquare] == "R" and endSquare.isAdjacent(blackKingSquare):
+        if chessboardAfter[endSquare] == "R" and endSquare.isAdjacent(blackKingSquare):
             return False
 
         # Remove rook when it blocks attack on black king
@@ -523,20 +538,20 @@ def boxInBlackKing(blackKingSquare: Square, endSquare: Square, boardBefore: Boar
 
     # Place rooks
     for rookSquare in rookSquares:
-        boardBefore[rookSquare] = "R"
+        chessboardBefore[rookSquare] = "R"
 
     # Place black king
-    boardBefore[blackKingSquare] = "k"
+    chessboardBefore[blackKingSquare] = "k"
     return True
 
-# Place black and white king on board such that black king is not in check
-# Return FEN of such position if one is found else return None
-def placeKingsNoCheck(endSquare: Square, boardBefore: Board[str], boardAfter: Board[str], keepFree: Board[bool],
-    hasWhiteKing: bool, flipForPawn: bool) -> Optional[str]:
+# Place black and white king on chessboard such that black king is not in check
+# Return chessboard of such position if one is found else return None
+def placeKingsNoCheck(endSquare: Square, chessboardBefore: Board[str], chessboardAfter: Board[str], keepFree: Board[bool],
+    hasWhiteKing: bool) -> Optional[Board[str]]:
 
-    boardBefore = deepcopy(boardBefore)
-    attackedSquaresBefore = getAttackedSquares(boardBefore)
-    attackedSquaresAfter = getAttackedSquares(boardAfter)
+    chessboardBefore = deepcopy(chessboardBefore)
+    attackedSquaresBefore = getAttackedSquares(chessboardBefore)
+    attackedSquaresAfter = getAttackedSquares(chessboardAfter)
     squareBlackKing = None
 
     # Test all squares
@@ -555,7 +570,7 @@ def placeKingsNoCheck(endSquare: Square, boardBefore: Board[str], boardAfter: Bo
             continue
 
         # Place black king
-        boardBefore[square] = "k"
+        chessboardBefore[square] = "k"
         squareBlackKing = square
         break
 
@@ -565,20 +580,20 @@ def placeKingsNoCheck(endSquare: Square, boardBefore: Board[str], boardAfter: Bo
 
     # Place white king if not placed yet
     if not hasWhiteKing:
-        if not placeWhiteKing(boardBefore, keepFree, attackedSquaresAfter, squareBlackKing):
+        if not placeWhiteKing(chessboardBefore, keepFree, attackedSquaresAfter, squareBlackKing):
             return None
 
-    # Return FEN
-    return boardToFen(boardBefore, flipRanks=flipForPawn, swapPlayers=flipForPawn)
+    # Return chessboard
+    return chessboardBefore
 
-# Place black and white king on board such that black king is in check
-# Return FEN of such position if one is found else return None
-def placeKingsCheck(endSquare: Square, boardBefore: Board[str], boardAfter: Board[str], keepFree: Board[bool],
-    hasWhiteKing: bool, flipForPawn: bool) -> Optional[str]:
+# Place black and white king on chessboard such that black king is in check
+# Return chessboard of such position if one is found else return None
+def placeKingsCheck(endSquare: Square, chessboardBefore: Board[str], chessboardAfter: Board[str], keepFree: Board[bool],
+    hasWhiteKing: bool) -> Optional[Board[str]]:
 
-    boardBefore = deepcopy(boardBefore)
-    attackedSquaresBefore = getAttackedSquares(boardBefore)
-    attackedSquaresAfter = getAttackedSquares(boardAfter)
+    chessboardBefore = deepcopy(chessboardBefore)
+    attackedSquaresBefore = getAttackedSquares(chessboardBefore)
+    attackedSquaresAfter = getAttackedSquares(chessboardAfter)
     squareBlackKing = None
 
     # Test all squares
@@ -600,22 +615,9 @@ def placeKingsCheck(endSquare: Square, boardBefore: Board[str], boardAfter: Boar
         if hasWhiteKing and square.isAdjacent(endSquare):
             continue
 
-        # Check for checkmate
-        checkmate = True
-        for jump in KING_JUMPS:
-
-            squareNew = square + jump
-            if not squareNew.onBoard():
-                continue
-
-            # Found unattacked square
-            if not attackedSquaresAfter[squareNew]:
-                checkmate = False
-                break
-
         # Place king if there is no checkmate
-        if not checkmate:
-            boardBefore[square] = "k"
+        if not isCheckmate(square, attackedSquaresAfter):
+            chessboardBefore[square] = "k"
             squareBlackKing = square
             break
 
@@ -625,20 +627,20 @@ def placeKingsCheck(endSquare: Square, boardBefore: Board[str], boardAfter: Boar
 
     # Place white king if not placed yet
     if not hasWhiteKing:
-        if not placeWhiteKing(boardBefore, keepFree, attackedSquaresAfter, squareBlackKing):
+        if not placeWhiteKing(chessboardBefore, keepFree, attackedSquaresAfter, squareBlackKing):
             return None
 
-    # Return FEN
-    return boardToFen(boardBefore, flipRanks=flipForPawn, swapPlayers=flipForPawn)
+    # Return chessboard
+    return chessboardBefore
 
-# Place black and white king on board such that black king is checkmated
-# Return FEN of such position if one is found else return None
-def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: Board[str], keepFree: Board[bool],
-    hasWhiteKing: bool, flipForPawn: bool) -> Optional[str]:
+# Place black and white king on chessboard such that black king is checkmated
+# Return chessboard of such position if one is found else return None
+def placeKingsCheckmate(endSquare: Square, chessboardBefore: Board[str], chessboardAfter: Board[str], keepFree: Board[bool],
+    hasWhiteKing: bool) -> Optional[Board[str]]:
 
-    boardBefore = deepcopy(boardBefore)
-    attackedSquaresBefore = getAttackedSquares(boardBefore)
-    attackedSquaresAfter = getAttackedSquares(boardAfter)
+    chessboardBefore = deepcopy(chessboardBefore)
+    attackedSquaresBefore = getAttackedSquares(chessboardBefore)
+    attackedSquaresAfter = getAttackedSquares(chessboardAfter)
     squareBlackKing = None
 
     # Test all squares
@@ -661,22 +663,10 @@ def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: 
             continue
 
         # Check for checkmate
-        checkmate = True
-        for jump in KING_JUMPS:
+        if isCheckmate(square, attackedSquaresAfter):
 
-            adjacentSquare = square + jump
-            if not adjacentSquare.onBoard():
-                continue
-
-            # Found unattacked square
-            if not attackedSquaresAfter[adjacentSquare]:
-                checkmate = False
-                break
-
-        # Checkmate found
-        if checkmate:
             # Place black king
-            boardBefore[square] = "k"
+            chessboardBefore[square] = "k"
             squareBlackKing = square
             break
 
@@ -703,7 +693,7 @@ def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: 
         # All adjacent squares are placable
         if adjacentAllPlacable:
             # Place white piece around black king
-            if boxInBlackKing(square, endSquare, boardBefore, boardAfter, attackedSquaresAfter):
+            if boxInBlackKing(square, endSquare, chessboardBefore, chessboardAfter, attackedSquaresAfter):
                 squareBlackKing = square
                 break
 
@@ -713,21 +703,22 @@ def placeKingsCheckmate(endSquare: Square, boardBefore: Board[str], boardAfter: 
 
     # Place white king if not placed yet
     if not hasWhiteKing:
-        if not placeWhiteKing(boardBefore, keepFree, attackedSquaresAfter, squareBlackKing):
+        if not placeWhiteKing(chessboardBefore, keepFree, attackedSquaresAfter, squareBlackKing):
             return None
 
-    # Return FEN
-    return boardToFen(boardBefore, flipRanks=flipForPawn, swapPlayers=flipForPawn)
+    # Return chessboard
+    return chessboardBefore
 
-# Update FEN group with FENs of capture or non-capture moves from specified chessboard
-def updateFenGroupCapture(fenGroupCapture: list[Optional[str]], piece: str, startSquare: Square, endSquare: Square,
-    boardBefore: Board[str], boardAfter: Board[str], keepFree: Board[bool], flipForPawn: bool) -> None:
+# Update move group with chessboards of capture or non-capture moves from partial chessboard
+def updateMoveGroupCapture(moveGroupCapture: list[Optional[Board[str]]], piece: str, startSquare: Square, endSquare: Square,
+    chessboardBefore: Board[str], chessboardAfter: Board[str], keepFree: Board[bool]) -> None:
 
-    # Generate FENs for no check, check, and checkmate
+    # Generate chessboards for no check, check, and checkmate
     placeFunctions = [placeKingsNoCheck, placeKingsCheck, placeKingsCheckmate]
+    hasWhiteKing = piece == "K"
     for i in range(3):
-        if not fenGroupCapture[i]:
-            fenGroupCapture[i] = placeFunctions[i](endSquare, boardBefore, boardAfter, keepFree, piece == "K", flipForPawn)
+        if not moveGroupCapture[i]:
+            moveGroupCapture[i] = placeFunctions[i](endSquare, chessboardBefore, chessboardAfter, keepFree, hasWhiteKing)
 
     # Place piece for discovered attack
     for (pieceDiscovered, offsets) in [("R", ROOK_DIRECTIONS), ("B", BISHOP_DIRECTIONS)]:
@@ -743,7 +734,7 @@ def updateFenGroupCapture(fenGroupCapture: list[Optional[str]], piece: str, star
                 continue
 
             # Check and checkmate already found
-            if fenGroupCapture[1] and fenGroupCapture[2]:
+            if moveGroupCapture[1] and moveGroupCapture[2]:
                 break
 
             # Square must be kept free for move
@@ -751,45 +742,45 @@ def updateFenGroupCapture(fenGroupCapture: list[Optional[str]], piece: str, star
                 continue
 
             # Place discovered attacker
-            boardBefore[squareAttacker] = pieceDiscovered
-            boardAfter[squareAttacker] = pieceDiscovered
+            chessboardBefore[squareAttacker] = pieceDiscovered
+            chessboardAfter[squareAttacker] = pieceDiscovered
             keepFree[squareAttacker] = True
 
-            # Generate FEN for check
-            if not fenGroupCapture[1]:
-                fenGroupCapture[1] = placeKingsCheck(endSquare, boardBefore, boardAfter, keepFree, piece == "K", flipForPawn)
+            # Generate chessboard for check
+            if not moveGroupCapture[1]:
+                moveGroupCapture[1] = placeKingsCheck(endSquare, chessboardBefore, chessboardAfter, keepFree, hasWhiteKing)
 
-            # Generate FEN for checkmate
-            if not fenGroupCapture[2]:
-                fenGroupCapture[2] = placeKingsCheckmate(endSquare, boardBefore, boardAfter, keepFree, piece == "K", flipForPawn)
+            # Generate chessboard for checkmate
+            if not moveGroupCapture[2]:
+                moveGroupCapture[2] = placeKingsCheckmate(endSquare, chessboardBefore, chessboardAfter, keepFree, hasWhiteKing)
 
             # Remove discovered attacker
-            boardBefore[squareAttacker] = ""
-            boardAfter[squareAttacker] = ""
+            chessboardBefore[squareAttacker] = ""
+            chessboardAfter[squareAttacker] = ""
             keepFree[squareAttacker] = False
 
-# Update FEN group with FENs generated from specified position
-def updateFenGroup(fenGroup: list[list[Optional[str]]], piece: str, startSquare: Square, endSquare: Square,
-    otherSquares: list[Square], promotePiece="", flipForPawn=False) -> None:
+# Update move group with chessboards generated from piece locations
+def updateMoveGroup(moveGroup: list[list[Optional[Board[str]]]], piece: str, startSquare: Square, endSquare: Square,
+    otherSquares: list[Square], promotePiece="") -> None:
 
-    # Return if FEN group is already full
+    # Return if move group is already full
     alreadyFull = True
     for i in range(2):
         for j in range(3):
-            if not fenGroup[i][j]:
+            if not moveGroup[i][j]:
                 alreadyFull = False
 
     if alreadyFull:
         return
 
-    boardBefore = Board("")
+    chessboardBefore = Board("")
     keepFree = Board(False)
 
     # Place pieces on chessboard and calculate squares that must be kept free for move
     for square in [startSquare] + otherSquares:
 
         # Place piece
-        boardBefore[square] = piece
+        chessboardBefore[square] = piece
 
         # Knight
         if piece == "N":
@@ -807,61 +798,210 @@ def updateFenGroup(fenGroup: list[list[Optional[str]]], piece: str, startSquare:
         # Mark end square
         keepFree[endSquare] = True
 
-    # Calculate board after move
-    boardAfter = deepcopy(boardBefore)
-    boardAfter[startSquare] = ""
-    boardAfter[endSquare] = piece if promotePiece == "" else promotePiece
+    # Calculate chessboard after move
+    chessboardAfter = deepcopy(chessboardBefore)
+    chessboardAfter[startSquare] = ""
+    chessboardAfter[endSquare] = piece if promotePiece == "" else promotePiece
 
-    # Update FEN group with FENs of non-capture moves
-    updateFenGroupCapture(fenGroup[0], piece, startSquare, endSquare, boardBefore, boardAfter, keepFree, flipForPawn)
+    # Update move group with chessboards of non-capture moves
+    updateMoveGroupCapture(moveGroup[0], piece, startSquare, endSquare, chessboardBefore, chessboardAfter, keepFree)
 
-    # Update FEN group with FENs of capture moves
-    boardBefore[endSquare] = "n"
-    updateFenGroupCapture(fenGroup[1], piece, startSquare, endSquare, boardBefore, boardAfter, keepFree, flipForPawn)
+    # Update move group with chessboards of capture moves
+    chessboardBefore[endSquare] = "n"
+    updateMoveGroupCapture(moveGroup[1], piece, startSquare, endSquare, chessboardBefore, chessboardAfter, keepFree)
 
-# Insert FEN group into move list
+# Insert move group into move list
 # Return whether moves were inserted
-def insertMoves(moves: list[tuple[str, str]], moveStart: str, moveEnd: str, fenGroup: list[list[Optional[str]]],
-    stats: Stats) -> bool:
+def insertMoves(moves: list[tuple[str, str]], moveStart: str, moveEnd: str, moveGroup: list[list[Optional[Board[str]]]],
+    stats: Stats, flipForPawn=False) -> bool:
 
-    moveInserted = False
+    movesInserted = False
+    moveFens: list[list[Optional[tuple[str, str]]]] = [[None] * 3 for _ in range(2)]
 
     # For no capture and capture moves
     for i in range(2):
         capture = "" if i == 0 else "x"
 
         # For every final symbol
-        for (j, symbol) in enumerate(FINAL_SYMBOL):
-            move = moveStart + capture + moveEnd + symbol
+        for (j, finalSymbol) in enumerate(FINAL_SYMBOL):
 
-            # If move is missing, use manual move if available
-            if (not fenGroup[i][j]) and (move in MANUAL_MOVES):
-                fenGroup[i][j] = MANUAL_MOVES[move]
+            move = moveStart + capture + moveEnd + finalSymbol
+            fen = ""
 
-            # Insert move into move list
-            if fenGroup[i][j]:
-                moves.append((move, cast(str, fenGroup[i][j])))
+            # Move was found
+            if moveGroup[i][j]:
+                chessboard = cast(Board[str], moveGroup[i][j])
+                fen = chessboardToFen(chessboard, flipRanks=flipForPawn, swapPlayers=flipForPawn)
+
+            # If move was not found, use manual move if available
+            elif move in MANUAL_MOVES:
+                fen = MANUAL_MOVES[move]
+
+            # If move is possible, insert it into move list
+            if fen:
+                moves.append((move, fen))
                 stats.finalSymbol[j] += 1
-                moveInserted = True
+                movesInserted = True
+                moveFens[i][j] = (move, fen)
 
         # Statistics
-        if fenGroup[i][0]:
+        if moveFens[i][0]:
 
-            moveWithFen = (moveStart + capture + moveEnd, cast(str, fenGroup[i][0]))
+            moveFen = cast(Tuple[str, str],  moveFens[i][0])
 
             # Checkmate is missing
-            if fenGroup[i][1] and not fenGroup[i][2]:
-                stats.missingMoves["checkmate"].append(moveWithFen)
+            if moveFens[i][1] and not moveFens[i][2]:
+                stats.missingMoves["checkmate"].append(moveFen)
 
             # Check is missing
-            if not fenGroup[i][1] and fenGroup[i][2]:
-                stats.missingMoves["check"].append(moveWithFen)
+            if not moveFens[i][1] and moveFens[i][2]:
+                stats.missingMoves["check"].append(moveFen)
 
             # Both are missing
-            if not fenGroup[i][1] and not fenGroup[i][2]:
-                stats.missingMoves["both"].append(moveWithFen)
+            if not moveFens[i][1] and not moveFens[i][2]:
+                stats.missingMoves["both"].append(moveFen)
 
-    return moveInserted
+    return movesInserted
+
+
+######################################
+### Generate pawn and castle moves ###
+######################################
+
+# Get all single square pawn moves for one square
+def getMovesPawnSingle(endSquare: Square, player: str, stats: Stats, san: bool) -> list[tuple[str, str]]:
+
+    moves: list[tuple[str, str]] = []
+    endSquareStr = str(endSquare)
+
+    # Flip ranks if player is black
+    flip = player == "b"
+    if flip:
+        endSquare = Square(endSquare.file, 7 - endSquare.rank)
+
+    # Single square move not possible
+    if endSquare.rank < 2:
+        return moves
+
+    # For every promotion option (piece or no promotion)
+    promotionOptions = PROMOTION if endSquare.rank == 7 else [""]
+    for promotePiece in promotionOptions:
+
+        # Generate non-capture moves
+        startSquare = endSquare + Offset(0, -1)
+        moveGroup = getEmptyMoveGroup()
+        updateMoveGroup(moveGroup, "P", startSquare, endSquare, [], promotePiece)
+
+        # Start of move string
+        if san:
+            moveStart = ""
+        else:
+            moveStart = flipFileRank(str(startSquare), flipRanks=flip)
+
+        # End of move string
+        promote = "" if promotePiece == "" else "=" + promotePiece
+        moveEnd = endSquareStr + promote
+
+        # Move group also contains capture moves, so delete them before insertion into move list
+        moveGroup[1] = [None] * 3
+        insertMoves(moves, moveStart, moveEnd, moveGroup, stats, flip)
+
+    return moves
+
+# Get all capture pawn moves for one square
+def getMovesPawnCapture(endSquare: Square, player: str, stats: Stats, san: bool) -> list[tuple[str, str]]:
+
+    moves: list[tuple[str, str]] = []
+    endSquareStr = str(endSquare)
+
+    # Flip ranks if player is black
+    flip = player == "b"
+    if flip:
+        endSquare = Square(endSquare.file, 7 - endSquare.rank)
+
+    # Capture move not possible
+    if endSquare.rank < 2:
+        return moves
+
+    # For every promotion option (piece or no promotion)
+    promotionOptions = PROMOTION if endSquare.rank == 7 else [""]
+    for promotePiece in promotionOptions:
+
+        # For both adjacent files
+        for offset in [Offset(-1, -1), Offset(1, -1)]:
+            startSquare = endSquare + offset
+            if startSquare.onBoard():
+
+                # Generate capture moves
+                moveGroup = getEmptyMoveGroup()
+                updateMoveGroup(moveGroup, "P", startSquare, endSquare, [], promotePiece)
+
+                # Start of move string
+                if san:
+                    moveStart = fileToStr(startSquare.file)
+                else:
+                    moveStart = flipFileRank(str(startSquare), flipRanks=flip)
+
+                # End of move string
+                promote = "" if promotePiece == "" else "=" + promotePiece
+                moveEnd = endSquareStr + promote
+
+                # Move group also contains non-capture moves, so delete them before insertion into move list
+                moveGroup[0] = [None] * 3
+                insertMoves(moves, moveStart, moveEnd, moveGroup, stats, flip)
+
+    return moves
+
+# Get all double square pawn moves for one square
+def getMovesPawnDouble(endSquare: Square, player: str, stats: Stats) -> list[tuple[str, str]]:
+
+    moves: list[tuple[str, str]] = []
+    endSquareStr = str(endSquare)
+
+    # Flip ranks if player is black
+    flip = player == "b"
+    if flip:
+        endSquare = Square(endSquare.file, 7 - endSquare.rank)
+
+    # Double square move not possible
+    if endSquare.rank != 3:
+        return moves
+
+    # Generate non-capture moves
+    startSquare = endSquare + Offset(0, -2)
+    moveGroup = getEmptyMoveGroup()
+    updateMoveGroup(moveGroup, "P", startSquare, endSquare, [])
+
+    # End and start of move string
+    moveStart = flipFileRank(str(startSquare), flipRanks=flip)
+    moveEnd = endSquareStr
+
+    # Move group also contains capture moves, so delete them before insertion into move list
+    moveGroup[1] = [None] * 3
+    insertMoves(moves, moveStart, moveEnd, moveGroup, stats, flip)
+
+    return moves
+
+# Get all castle moves
+def getMovesCastle() -> resultType:
+
+    moves: list[tuple[str, str]] = []
+    statsBoard = Board(Stats())
+    stats = statsBoard[Square(0, 0)]
+
+    # San and Lan castle
+    for castle in ["O-O", "O-O-O"]:
+
+        # For every final symbol
+        for (i, finalSymbol) in enumerate(FINAL_SYMBOL):
+            move = castle + finalSymbol
+
+            # Insert move if it is contained in manual moves
+            if move in MANUAL_MOVES:
+                moves.append((move, MANUAL_MOVES[move]))
+                stats.finalSymbol[i] += 1
+
+    return (moves, statsBoard)
 
 
 ##########################
@@ -875,16 +1015,16 @@ def getMovesDisambiguation(piece: str, endSquare: Square, startSquares: list[Squ
     movesSquare: list[tuple[str, str]] = []
     endSquareStr = str(endSquare)
 
-    # FEN groups for plain, file, rank, and square moves
-    fenGroupPlain = getEmptyFenGroup()
-    fenGroupFile = [getEmptyFenGroup() for _ in range(8)]
-    fenGroupRank = [getEmptyFenGroup() for _ in range(8)]
-    fenGroupSquare = Board(getEmptyFenGroup())
+    # Move groups for plain, file, rank, and square moves
+    moveGroupPlain = getEmptyMoveGroup()
+    moveGroupFile = [getEmptyMoveGroup() for _ in range(8)]
+    moveGroupRank = [getEmptyMoveGroup() for _ in range(8)]
+    moveGroupSquare = Board(getEmptyMoveGroup())
 
     # One piece
     for startSquare in startSquares:
         # Plain move
-        updateFenGroup(fenGroupPlain, piece, startSquare, endSquare, [])
+        updateMoveGroup(moveGroupPlain, piece, startSquare, endSquare, [])
 
     # Two pieces
     for (startSquare, otherSquare) in permutations(startSquares, 2):
@@ -895,10 +1035,10 @@ def getMovesDisambiguation(piece: str, endSquare: Square, startSquares: list[Squ
 
         # Rank move
         if startSquare.file == otherSquare.file:
-            updateFenGroup(fenGroupRank[startSquare.rank], piece, startSquare, endSquare, [otherSquare])
+            updateMoveGroup(moveGroupRank[startSquare.rank], piece, startSquare, endSquare, [otherSquare])
         # File move
         else:
-            updateFenGroup(fenGroupFile[startSquare.file], piece, startSquare, endSquare, [otherSquare])
+            updateMoveGroup(moveGroupFile[startSquare.file], piece, startSquare, endSquare, [otherSquare])
 
     # Three pieces
     for (startSquare, otherSquare1, otherSquare2) in permutations(startSquares, 3):
@@ -912,34 +1052,34 @@ def getMovesDisambiguation(piece: str, endSquare: Square, startSquares: list[Squ
             continue
 
         # Square move
-        updateFenGroup(fenGroupSquare[startSquare], piece, startSquare, endSquare, [otherSquare1, otherSquare2])
+        updateMoveGroup(moveGroupSquare[startSquare], piece, startSquare, endSquare, [otherSquare1, otherSquare2])
 
     # Insert plain move
-    if insertMoves(movesSquare, piece, endSquareStr, fenGroupPlain, stats):
+    if insertMoves(movesSquare, piece, endSquareStr, moveGroupPlain, stats):
         stats.plainMove = True
 
     # Insert file moves
     for fileStart in range(8):
         moveStart = piece + fileToStr(fileStart)
-        fen = fenGroupFile[fileStart]
+        moveGroup = moveGroupFile[fileStart]
 
-        if insertMoves(movesSquare, moveStart, endSquareStr, fen, stats):
+        if insertMoves(movesSquare, moveStart, endSquareStr, moveGroup, stats):
             stats.fileMove[fileStart] = True
 
     # Insert rank moves
     for rankStart in range(8):
         moveStart = piece + rankToStr(rankStart)
-        fen = fenGroupRank[rankStart]
+        moveGroup = moveGroupRank[rankStart]
 
-        if insertMoves(movesSquare, moveStart, endSquareStr, fen, stats):
+        if insertMoves(movesSquare, moveStart, endSquareStr, moveGroup, stats):
             stats.rankMove[rankStart] = True
 
     # Insert square moves
     for startSquare in SQUARES:
         moveStart = piece + str(startSquare)
-        fen = fenGroupSquare[startSquare]
+        moveGroup = moveGroupSquare[startSquare]
 
-        if insertMoves(movesSquare, moveStart, endSquareStr, fen, stats):
+        if insertMoves(movesSquare, moveStart, endSquareStr, moveGroup, stats):
             stats.squareMove[startSquare] = True
 
     # Mark reachable squares
@@ -976,44 +1116,14 @@ def getMovesPawnSan() -> resultType:
 
     # For every end square
     for endSquare in SQUARES:
-
         stats = statsBoard[endSquare]
-        endSquareStr = str(endSquare)
 
-        # If end square can't be reached by white pawn
-        # Then flip rank of end square and set flag
-        flipForPawn = False
-        if endSquare.rank <= 1:
-            endSquare = Square(endSquare.file, 7 - endSquare.rank)
-            flipForPawn = True
+        # White pawn can't reach first two ranks
+        player = "w" if endSquare.rank >= 2 else "b"
 
-        # For every promotion option (piece or no promotion)
-        promotionOptions = PROMOTION if endSquare.rank == 7 else [""]
-        for promotePiece in promotionOptions:
-
-            promote = "" if promotePiece == "" else "=" + promotePiece
-
-            # Generate non-capture moves
-            startSquare = endSquare + Offset(0, -1)
-            fenGroup = getEmptyFenGroup()
-            updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
-
-            # FEN group also contains capture moves, so delete them before insertion into move list
-            fenGroup[1] = [None] * 3
-            insertMoves(moves, "", endSquareStr + promote, fenGroup, stats)
-
-            # Check both adjacent files
-            for offset in [Offset(-1, -1), Offset(1, -1)]:
-                startSquare = endSquare + offset
-                if startSquare.onBoard():
-
-                    # Generate capture moves
-                    fenGroup = getEmptyFenGroup()
-                    updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
-
-                    # FEN group also contains non-capture moves, so delete them before insertion into move list
-                    fenGroup[0] = [None] * 3
-                    insertMoves(moves, fileToStr(startSquare.file), endSquareStr + promote, fenGroup, stats)
+        # Generate moves
+        moves += getMovesPawnSingle(endSquare, player, stats, True)
+        moves += getMovesPawnCapture(endSquare, player, stats, True)
 
     return (moves, statsBoard)
 
@@ -1025,16 +1135,16 @@ def getMovesKingSan() -> resultType:
 
     # For every end square
     for endSquare in SQUARES:
-        fenGroup = getEmptyFenGroup()
+        moveGroup = getEmptyMoveGroup()
 
         # For every adjacent square as start square
         for startSquare in getStartSquaresJump(endSquare, KING_JUMPS):
 
-            # Update FEN group
-            updateFenGroup(fenGroup, "K", startSquare, endSquare, [])
+            # Update move group
+            updateMoveGroup(moveGroup, "K", startSquare, endSquare, [])
 
         # Insert moves into move list
-        insertMoves(moves, "K", str(endSquare), fenGroup, statsBoard[startSquare])
+        insertMoves(moves, "K", str(endSquare), moveGroup, statsBoard[startSquare])
 
     return (moves, statsBoard)
 
@@ -1054,90 +1164,10 @@ def getMovesQueenSan() -> resultType:
 def getMovesKnightSan() -> resultType:
     return getMovesPieceSan("N", KNIGHT_JUMPS, True)
 
-# Get all castle moves
-def getMovesCastle() -> resultType:
-
-    moves: list[tuple[str, str]] = []
-    statsBoard = Board(Stats())
-    stats = statsBoard[Square(0, 0)]
-
-    # San and Lan castle
-    for castle in ["O-O", "O-O-O"]:
-
-        # For every final symbol
-        for (i, final) in enumerate(FINAL_SYMBOL):
-            move = castle + final
-
-            # Insert move if it is contained in manual moves
-            if move in MANUAL_MOVES:
-                moves.append((move, MANUAL_MOVES[move]))
-                stats.finalSymbol[i] += 1
-
-    return (moves, statsBoard)
-
 
 ##########################
 ### Generate LAN moves ###
 ##########################
-
-# Get all pawn LAN moves
-def getMovesPawnLan() -> resultType:
-
-    moves: list[tuple[str, str]] = []
-    statsBoard = Board(Stats())
-
-    for flipForPawn in [False, True]:
-
-        getStr = lambda square: flipFileRank(str(square), False, flipForPawn)
-
-        # For every end square that isn't on the first two ranks
-        for endSquare in SQUARES:
-
-            if endSquare.rank < 2:
-                continue
-
-            stats = statsBoard[endSquare]
-
-            # For every promotion option (piece or no promotion)
-            promotionOptions = PROMOTION if endSquare.rank == 7 else [""]
-            for promotePiece in promotionOptions:
-
-                promote = "" if promotePiece == "" else "=" + promotePiece
-                moveEnd = getStr(endSquare) + promote
-
-                # Generate non-capture one-square moves
-                startSquare = endSquare + Offset(0, -1)
-                fenGroup = getEmptyFenGroup()
-                updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
-
-                # FEN group also contains capture moves, so delete them before insertion into move list
-                fenGroup[1] = [None] * 3
-                insertMoves(moves, getStr(startSquare), moveEnd, fenGroup, stats)
-
-                # Generate non-capture two-square moves
-                if endSquare.rank == 3:
-                    startSquare = endSquare + Offset(0, -2)
-                    fenGroup = getEmptyFenGroup()
-                    updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
-
-                    # FEN group also contains capture moves, so delete them before insertion into move list
-                    fenGroup[1] = [None] * 3
-                    insertMoves(moves, getStr(startSquare), moveEnd, fenGroup, stats)
-
-                # Check both adjacent files
-                for offset in [Offset(-1, -1), Offset(1, -1)]:
-                    startSquare = endSquare + offset
-                    if startSquare.onBoard():
-
-                        # Generate capture moves
-                        fenGroup = getEmptyFenGroup()
-                        updateFenGroup(fenGroup, "P", startSquare, endSquare, [], promotePiece, flipForPawn)
-
-                        # FEN group also contains non-capture moves, so delete them before insertion into move list
-                        fenGroup[0] = [None] * 3
-                        insertMoves(moves, getStr(startSquare), moveEnd, fenGroup, stats)
-
-    return (moves, statsBoard)
 
 # Get all LAN moves of a piece
 def getMovesPieceLan(piece: str, movement: list[Offset], isJump: bool) -> resultType:
@@ -1158,9 +1188,29 @@ def getMovesPieceLan(piece: str, movement: list[Offset], isJump: bool) -> result
         for startSquare in startSquares:
 
             # Generate moves and append to move list
-            fenGroup = getEmptyFenGroup()
-            updateFenGroup(fenGroup, piece, startSquare, endSquare, [])
-            insertMoves(moves, piece + str(startSquare), str(endSquare), fenGroup, statsBoard[endSquare])
+            moveGroup = getEmptyMoveGroup()
+            updateMoveGroup(moveGroup, piece, startSquare, endSquare, [])
+            insertMoves(moves, piece + str(startSquare), str(endSquare), moveGroup, statsBoard[endSquare])
+
+    return (moves, statsBoard)
+
+# Get all pawn LAN moves
+def getMovesPawnLan() -> resultType:
+
+    moves: list[tuple[str, str]] = []
+    statsBoard = Board(Stats())
+
+    # For every end square
+    for endSquare in SQUARES:
+        stats = statsBoard[endSquare]
+
+        # For both players
+        for player in ["w", "b"]:
+
+            # Generate moves
+            moves += getMovesPawnSingle(endSquare, player, stats, False)
+            moves += getMovesPawnCapture(endSquare, player, stats, False)
+            moves += getMovesPawnDouble(endSquare, player, stats)
 
     return (moves, statsBoard)
 
@@ -1214,7 +1264,7 @@ def readManualMoves() -> None:
             (piece, disambiguation, capture, endSquareStr, rest) = parseMove(move)
 
             pawnMove = piece == ""
-            board = fenToBoard(fen)
+            chessboard = fenToChessboard(fen)
             endSquare = strToSquare(endSquareStr)
 
             # Duplicate move for all 4 possible flips of files and ranks
@@ -1226,22 +1276,22 @@ def readManualMoves() -> None:
                 moveFlipped = moveFlippedStart + capture + moveFlippedEnd
 
                 # Generate flipped FEN
-                fenFlipped = boardToFen(board, flipFiles, flipRanks, flipRanks and pawnMove)
+                fenFlipped = chessboardToFen(chessboard, flipFiles, flipRanks, flipRanks and pawnMove)
 
                 # Add flipped move to manual moves
                 MANUAL_MOVES[moveFlipped] = fenFlipped
 
                 # If move is not a capture move, turn it into one
                 if capture == "" and not pawnMove:
-                    board[endSquare] = "n"
+                    chessboard[endSquare] = "n"
 
                     # Generate flipped capture move and FEN
                     moveFlipped = moveFlippedStart + "x" + moveFlippedEnd
-                    fenFlipped = boardToFen(board, flipFiles, flipRanks, flipRanks and pawnMove)
+                    fenFlipped = chessboardToFen(chessboard, flipFiles, flipRanks, flipRanks and pawnMove)
 
                     # Add flipped capture move to manual moves
                     MANUAL_MOVES[moveFlipped] = fenFlipped
-                    board[endSquare] = ""
+                    chessboard[endSquare] = ""
 
 # Get table that contains the amount of move groups for every square and disambiguation type
 def getDisambiguationTable(statsBoard: Board[Stats]) -> PrettyTable:
@@ -1318,10 +1368,10 @@ def outputStatistics(results: dict[str, resultType], filePath: str, isSan: bool)
                 # Rest of chessboard is analogous because of flips
                 for file in range(4):
                     for rank in range(4):
-                        for (moveGroup, fen) in statsBoard[Square(file, rank)].missingMoves[key]:
+                        for (move, fen) in statsBoard[Square(file, rank)].missingMoves[key]:
 
-                            # Output move group and FEN
-                            fileStats.write(f"{moveGroup:6} {fen}\n")
+                            # Output move and FEN
+                            fileStats.write(f"{move:6} {fen}\n")
                             noneMissing = False
 
                 if noneMissing:
@@ -1355,7 +1405,7 @@ def outputMoves(results: dict[str, resultType], filePath: str, isSan: bool) -> N
 
 # Generate an image of a chessboard
 # Mark files, ranks, and squares according to statistics
-def generateImage(endSquare: Square, stats: Stats, filePath: str) -> None:
+def generateDisambiguationImage(endSquare: Square, stats: Stats, filePath: str) -> None:
 
     image = Image.new("RGB", (2 * BORDER_SIZE + 8 * SIDE_LENGTH, 2 * BORDER_SIZE + 8 * SIDE_LENGTH), "white")
     draw = ImageDraw.Draw(image)
@@ -1434,10 +1484,10 @@ def generateImage(endSquare: Square, stats: Stats, filePath: str) -> None:
     # Save image
     image.save(filePath)
 
-# Output images for every direction piece and square
-def outputImages(results: dict[str, resultType]) -> None:
+# Output disambiguation images for every piece with disambiguation moves and every square
+def outputDisambiguationImages(results: dict[str, resultType]) -> None:
 
-    # For every direction piece
+    # For every piece with disambiguation moves
     for piece in ["Rook", "Bishop", "Queen", "Knight"]:
         statsBoard = results[piece][1]
 
@@ -1447,7 +1497,7 @@ def outputImages(results: dict[str, resultType]) -> None:
             # Generate image as save to file
             fileName = f"{piece.lower()}-{str(endSquare)}.png"
             filePath = f"{IMAGES_FOLDER}/{piece}/{fileName}"
-            generateImage(endSquare, statsBoard[endSquare], filePath)
+            generateDisambiguationImage(endSquare, statsBoard[endSquare], filePath)
 
 
 ############
@@ -1461,7 +1511,7 @@ def main() -> None:
     parser = ArgumentParser()
     parser.add_argument("--no-san", action="store_true", help="don't generate SAN moves")
     parser.add_argument("--no-lan", action="store_true", help="don't generate LAN moves")
-    parser.add_argument("--images", action="store_true", help="generate disambiguation images")
+    parser.add_argument("--images", action="store_true", help="output disambiguation images")
     arguments = parser.parse_args()
 
     san = not arguments.no_san
@@ -1507,9 +1557,9 @@ def main() -> None:
         outputMoves(resultsLan, MOVES_LAN_PATH, False)
         outputStatistics(resultsLan, STATS_LAN_PATH, False)
 
-    # Generate disambiguation images
+    # Output disambiguation images
     if images and san:
-        outputImages(resultsSan)
+        outputDisambiguationImages(resultsSan)
 
 if __name__ == "__main__":
     main()
